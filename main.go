@@ -1,7 +1,11 @@
 package main
 
 import (
-	"fmt"
+	"github.com/hajimehoshi/ebiten"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	
+	"log"
+	"image/color"
 	"math/rand"
 	"time"
 )
@@ -9,18 +13,24 @@ import (
 type Grid [][]bool
 
 const (
-	width     = 50
-	height    = 50
-	sleepTime = 100
-	escp      = "\033c\x0c"
-	white     = "\xE2\xAC\x9C"
-	red       = "\xF0\x9F\x9F\xA5"
+	WIDTH     = 100
+	HEIGHT    = 100
+	SCALE = 2
+)
+
+var (
+	black color.RGBA=color.RGBA{255,255,255,255}
+	red color.RGBA=color.RGBA{255,0,0,255}
+	screen *ebiten.Image
+	count int = 0
+	newWorld = InitializeGrid()
+	nextWorld = InitializeGrid()
 )
 
 func InitializeGrid() Grid {
-	w := make(Grid, height)
+	w := make(Grid, HEIGHT)
 	for i := range w {
-		w[i] = make([]bool, width)
+		w[i] = make([]bool, HEIGHT)
 	}
 	return w
 }
@@ -31,18 +41,6 @@ func (g Grid) Seed() {
 			if rand.Intn(5) == 1 {
 				row[j] = true
 			}
-		}
-	}
-}
-
-func (g Grid) PrintGrid() {
-	for _, row := range g {
-		for cell := range row {
-			if cell == 1 {
-				fmt.Print(red)
-				continue
-			}
-			fmt.Print(white)
 		}
 	}
 }
@@ -71,34 +69,48 @@ func (g Grid) Next(x, y int) bool {
 	n := g.Neighbours(x, y)
 	alive := g.Alive(x, y)
 	if n < 4 && n > 1 && alive {
-		return true
+		return true //overcrowding or underpopulated
 	} else if n == 3 && !alive {
-		return true
+		return true //Reproduction
 	} else {
-		return false
+		return false //Survival
 	}
 }
 
 func NextGen(a, b Grid) {
-	for i := 0; i < height; i++ {
-		for j := 0; j < width; j++ {
+	for i := 0; i < HEIGHT; i++ {
+		for j := 0; j < WIDTH; j++ {
 			b[i][j] = a.Next(j, i)
 		}
 	}
 }
 
+func Frame (screen *ebiten.Image) error {
+	//Update state
+	NextGen(newWorld, nextWorld)
+	//Render state
+	newWorld.Render(screen)
+
+	return nil
+}
+
+func (g Grid) Render (screen *ebiten.Image){
+	screen.Fill(black)
+	for i :=0 ; i < HEIGHT; i++ {
+		for j:= 0; j < WIDTH; j++ {
+			if g[i][j] {
+			}
+		}
+
+	}
+}
+
 func main() {
-	fmt.Println(escp)
 	currentTime := time.Now().UTC().UnixNano()
 	rand.Seed(currentTime)
-	newWorld := InitializeGrid()
-	nextWorld := InitializeGrid()
 	newWorld.Seed()
-	for {
-		newWorld.PrintGrid()
-		NextGen(newWorld, nextWorld)
-		newWorld, nextWorld = nextWorld, newWorld
-		time.Sleep(sleepTime * time.Millisecond)
-		fmt.Println(escp)
-	}
+
+	if err := ebiten.Run(grid, WIDTH*scale, HEIGHT*scale, scale, "Conway's Game of Life"); err != nil {
+		log.Fatal(err)
+	}	
 }
