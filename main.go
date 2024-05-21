@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/hajimehoshi/ebiten"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	
 	"log"
 	"image/color"
@@ -10,24 +9,36 @@ import (
 	"time"
 )
 
-type Grid [][]bool
-
 const (
-	WIDTH     = 100
-	HEIGHT    = 100
+	WIDTH     = 240
+	HEIGHT    = 240
 	SCALE = 2
+	TILESIZE = 16
 )
 
 var (
 	black color.RGBA=color.RGBA{255,255,255,255}
 	red color.RGBA=color.RGBA{255,0,0,255}
 	screen *ebiten.Image
-	count int = 0
-	newWorld = InitializeGrid()
-	nextWorld = InitializeGrid()
 )
 
-func InitializeGrid() Grid {
+type Grid [][]bool
+type Game struct{
+	world Grid
+	nextWorld Grid
+}
+
+func NewGame() *Game {
+    world := ClearGrid()
+	nextWorld := ClearGrid()
+
+    return &Game{
+        world: world,
+        nextWorld: nextWorld,
+    }
+}
+
+func ClearGrid() Grid {
 	w := make(Grid, HEIGHT)
 	for i := range w {
 		w[i] = make([]bool, HEIGHT)
@@ -69,7 +80,7 @@ func (g Grid) Next(x, y int) bool {
 	n := g.Neighbours(x, y)
 	alive := g.Alive(x, y)
 	if n < 4 && n > 1 && alive {
-		return true //overcrowding or underpopulated
+		return true //Overcrowding or Underpopulated
 	} else if n == 3 && !alive {
 		return true //Reproduction
 	} else {
@@ -77,40 +88,52 @@ func (g Grid) Next(x, y int) bool {
 	}
 }
 
-func NextGen(a, b Grid) {
-	for i := 0; i < HEIGHT; i++ {
-		for j := 0; j < WIDTH; j++ {
-			b[i][j] = a.Next(j, i)
-		}
-	}
+func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
+    return HEIGHT, WIDTH
 }
 
-func Frame (screen *ebiten.Image) error {
-	//Update state
-	NextGen(newWorld, nextWorld)
-	//Render state
-	newWorld.Render(screen)
-
+func (g *Game) Update(*ebiten.Image) error {
+	for i :=0 ; i < HEIGHT; i++ {
+		for j:= 0; j < WIDTH; j++ {
+			if g.world.Next(j, i) {
+				g.nextWorld[i][j] = true
+			}
+		}
+	}
+	g.world = g.nextWorld
+	g.nextWorld = ClearGrid()
 	return nil
 }
 
-func (g Grid) Render (screen *ebiten.Image){
-	screen.Fill(black)
-	for i :=0 ; i < HEIGHT; i++ {
-		for j:= 0; j < WIDTH; j++ {
-			if g[i][j] {
+func (g *Game) Draw(screen *ebiten.Image) {
+	for y, row := range g.world {
+		for x, value := range row {
+			var pixelColor color.RGBA
+			if value {
+				pixelColor = red
+			} else {
+				pixelColor = black
+			}
+			for i := 0; i < SCALE; i++ {
+				for j := 0; j < SCALE; j++ {
+					screen.Set(x*SCALE+i, y*SCALE+j, pixelColor)
+				}
 			}
 		}
-
 	}
 }
 
 func main() {
 	currentTime := time.Now().UTC().UnixNano()
 	rand.Seed(currentTime)
-	newWorld.Seed()
 
-	if err := ebiten.Run(grid, WIDTH*scale, HEIGHT*scale, scale, "Conway's Game of Life"); err != nil {
-		log.Fatal(err)
-	}	
+	game := NewGame()
+	game.world.Seed()
+
+    ebiten.SetWindowSize(WIDTH*SCALE, HEIGHT*SCALE)
+    ebiten.SetWindowTitle("Conway's Game of Life")
+
+    if err := ebiten.RunGame(game); err != nil {
+        log.Fatal(err)
+    }
 }
