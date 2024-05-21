@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	WIDTH     = 240
-	HEIGHT    = 240
+	WIDTH = 480
+	HEIGHT = 480
 	SCALE = 2
 	TILESIZE = 16
 )
@@ -57,6 +57,9 @@ func (g Grid) Seed() {
 }
 
 func (g Grid) Alive(x, y int) bool {
+	if x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT {
+        return false
+    }
 	return g[y][x]
 }
 
