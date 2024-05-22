@@ -2,11 +2,14 @@ package main
 
 import (
 	"github.com/hajimehoshi/ebiten"
-	
-	"log"
+
 	"image/color"
+	"log"
 	"math/rand"
+	"os"
 	"time"
+	"strconv"
+	"fmt"
 )
 
 const (
@@ -19,10 +22,10 @@ const (
 var (
 	black color.RGBA=color.RGBA{255,255,255,255}
 	red color.RGBA=color.RGBA{255,0,0,255}
-	screen *ebiten.Image
 )
 
 type Grid [][]bool
+
 type Game struct{
 	world Grid
 	nextWorld Grid
@@ -49,7 +52,7 @@ func ClearGrid() Grid {
 func (g Grid) Seed() {
 	for _, row := range g {
 		for j := range row {
-			if rand.Intn(5) == 1 {
+			if rand.Intn(2) == 1 {
 				row[j] = true
 			}
 		}
@@ -83,11 +86,11 @@ func (g Grid) Next(x, y int) bool {
 	n := g.Neighbours(x, y)
 	alive := g.Alive(x, y)
 	if n < 4 && n > 1 && alive {
-		return true //Overcrowding or Underpopulated
+		return true //Survival
 	} else if n == 3 && !alive {
 		return true //Reproduction
 	} else {
-		return false //Survival
+		return false //Underpopulation
 	}
 }
 
@@ -127,9 +130,21 @@ func (g *Game) Draw(screen *ebiten.Image) {
 }
 
 func main() {
-	currentTime := time.Now().UTC().UnixNano()
-	rand.Seed(currentTime)
+	var seed int64
+	var err error
 
+	if len(os.Args) == 1 {
+		seed = time.Now().UnixNano()
+	} else {
+		seed, err = strconv.ParseInt(os.Args[1], 10, 64)
+		if err != nil {
+            fmt.Println("Invalid seed value, using current time as seed.")
+            seed = time.Now().UnixNano()
+        }
+	}
+	
+
+	rand.NewSource(seed)
 	game := NewGame()
 	game.world.Seed()
 
